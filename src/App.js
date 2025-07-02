@@ -24,7 +24,7 @@ function App() {
     setShowEvaluation(false);
     setEvaluationResult('');
     try {
-      const response = await fetch(`http://localhost:5001/start-simulation?scenario=${scenario}`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/start-simulation?scenario=${scenario}`);
       const data = await response.json();
       setMessages([{ role: 'ai', text: data.text || '' }]);
     } catch (error) {
@@ -47,7 +47,7 @@ function App() {
     setInput('');
 
     try {
-      const response = await fetch('http://localhost:5001/chat', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: currentInput, history: historyToSend }),
@@ -137,5 +137,3 @@ function App() {
 }
 
 export default App;
-
-
