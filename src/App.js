@@ -91,8 +91,8 @@ function App() {
             <button onClick={() => startSimulation('responder')}>応援者として開始</button>
           </div>
         ) : (
-          <button onClick={endAndEvaluateSimulation} disabled={!isSimulating}>
-            評価・終了
+          <button onClick={endAndEvaluateSimulation} disabled={!isSimulating || isLoadingEvaluation}>
+            {isLoadingEvaluation ? '評価中...' : '評価・終了'}
           </button>
         )}
       </header>
