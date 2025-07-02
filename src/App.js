@@ -7,6 +7,7 @@ function App() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [evaluationResult, setEvaluationResult] = useState('');
   const [showEvaluation, setShowEvaluation] = useState(false);
+  const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -63,6 +64,7 @@ function App() {
   const endAndEvaluateSimulation = async () => {
     if (!isSimulating) return;
     setIsSimulating(false);
+    setIsLoadingEvaluation(true);
 
     try {
       const historyToEvaluate = messages.filter(msg => msg.role !== 'error');
@@ -78,6 +80,8 @@ function App() {
       console.error('Error evaluating simulation:', error);
       setEvaluationResult('評価の生成中にエラーが発生しました。');
       setShowEvaluation(true);
+    } finally {
+      setIsLoadingEvaluation(false);
     }
   };
 
