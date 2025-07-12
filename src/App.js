@@ -8,6 +8,8 @@ function App() {
   const [evaluationResult, setEvaluationResult] = useState('');
   const [showEvaluation, setShowEvaluation] = useState(false);
   const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -24,6 +26,7 @@ function App() {
     setIsSimulating(true);
     setShowEvaluation(false);
     setEvaluationResult('');
+    setIsStarting(true);
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/start-simulation?scenario=${scenario}`);
       const data = await response.json();
@@ -32,6 +35,10 @@ function App() {
       console.error('Error starting simulation:', error);
       setMessages([{ role: 'error', text: 'シミュレーションの開始に失敗しました。' }]);
       setIsSimulating(false);
+    } finally {
+      // テスト用に2秒の遅延を追加 (確認後削除してください)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setIsStarting(false);
     }
   };
 
@@ -46,6 +53,7 @@ function App() {
 
     setMessages(prev => [...prev, { role: 'user', text: currentInput }]);
     setInput('');
+    setIsSending(true);
 
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/chat`, {
@@ -58,6 +66,8 @@ function App() {
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(prev => [...prev, { role: 'error', text: 'AIとの通信中にエラーが発生しました。' }]);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -65,6 +75,7 @@ function App() {
     if (!isSimulating) return;
     setIsSimulating(false);
     setIsLoadingEvaluation(true);
+    console.log("isLoadingEvaluation set to true");
 
     try {
       const historyToEvaluate = messages.filter(msg => msg.role !== 'error');
@@ -75,13 +86,15 @@ function App() {
       });
       const data = await response.json();
       setEvaluationResult(data.evaluation || '評価の取得に失敗しました。');
-      setShowEvaluation(true);
     } catch (error) {
       console.error('Error evaluating simulation:', error);
       setEvaluationResult('評価の生成中にエラーが発生しました。');
-      setShowEvaluation(true);
     } finally {
+      // 一時的に2秒の遅延を追加
+      await new Promise(resolve => setTimeout(resolve, 2000));
       setIsLoadingEvaluation(false);
+      console.log("isLoadingEvaluation set to false");
+      setShowEvaluation(true);
     }
   };
 
@@ -89,20 +102,26 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>急変時対応シミュレーター</h1>
-        {!isSimulating ? (
+        {!isSimulating && !isStarting ? (
           <div className="scenario-selection">
-            <button onClick={() => startSimulation('discoverer')}>発見者として開始</button>
-            <button onClick={() => startSimulation('responder')}>応援者として開始</button>
+            <button onClick={() => startSimulation('discoverer')} className="clickable">
+              発見者として開始
+            </button>
+            <button onClick={() => startSimulation('responder')} className="clickable">
+              応援者として開始
+            </button>
           </div>
         ) : (
-          <button onClick={endAndEvaluateSimulation} disabled={!isSimulating || isLoadingEvaluation}>
-            {isLoadingEvaluation ? '評価中...' : '評価・終了'}
-          </button>
+          !isSimulating && isStarting ? null : (
+            <button onClick={endAndEvaluateSimulation} disabled={isLoadingEvaluation} className="clickable">
+              {isLoadingEvaluation ? <><span className="button-spinner"></span>評価中...</> : '評価・終了'}
+            </button>
+          )
         )}
       </header>
       <div className="chat-container">
         <div className="messages">
-          {messages.length === 0 && (
+          {messages.length === 0 && !isStarting && (
             <div className="welcome-message">
               <p>シナリオを選択してシミュレーションを開始してください。</p>
             </div>
@@ -112,7 +131,7 @@ function App() {
               <p dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br />') }} />
             </div>
           ))}
-           <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} />
         </div>
         <div className="input-area">
           <input
@@ -121,18 +140,34 @@ function App() {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
             placeholder={isSimulating ? "あなたの行動を入力..." : "シミュレーションを開始してください"}
-            disabled={!isSimulating}
+            disabled={!isSimulating || isSending}
           />
-          <button onClick={sendMessage} disabled={!isSimulating}>送信</button>
+          <button onClick={sendMessage} disabled={!isSimulating || isSending} className="clickable">
+            {isSending ? <><span className="button-spinner"></span>送信中...</> : '送信'}
+          </button>
         </div>
       </div>
+
+      {isStarting && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>シミュレーションを準備中です...</p>
+        </div>
+      )}
+
+      {isLoadingEvaluation && !showEvaluation && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>AIが評価を生成中です。しばらくお待ちください...</p>
+        </div>
+      )}
 
       {showEvaluation && (
         <div className="modal-overlay">
           <div className="modal-content">
             <h2>評価結果</h2>
             <div className="evaluation-text" dangerouslySetInnerHTML={{ __html: evaluationResult.replace(/\n/g, '<br />').replace(/###/g, '<h3>').replace(/\*\*/g, '').replace(/\*/g, '<li>') }} />
-            <button onClick={() => setShowEvaluation(false)}>閉じる</button>
+            <button onClick={() => setShowEvaluation(false)} className="clickable">閉じる</button>
           </div>
         </div>
       )}
